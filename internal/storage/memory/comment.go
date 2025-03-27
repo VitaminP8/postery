@@ -64,13 +64,13 @@ func (s *CommentMemoryStorage) CreateComment(postID, parentID, content string) (
 		Children: []*model.Comment{},
 	}
 
-	// в случае, если комментарий вложенный - добавляем его в Children родительского комментария
-	if parentPtr != nil {
-		parent, ok := s.comments[*parentPtr]
-		if ok {
-			parent.Children = append(parent.Children, comment)
-		}
-	}
+	//// в случае, если комментарий вложенный - добавляем его в Children родительского комментария
+	//if parentPtr != nil {
+	//	parent, ok := s.comments[*parentPtr]
+	//	if ok {
+	//		parent.Children = append(parent.Children, comment)
+	//	}
+	//}
 
 	s.comments[id] = comment
 	return comment, nil
@@ -80,33 +80,46 @@ func (s *CommentMemoryStorage) GetComments(postID string, limit, offset int) ([]
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Проверяем, существует ли пост
 	post, err := s.postStorage.GetPostById(postID)
 	if err != nil {
 		return nil, fmt.Errorf("post with ID %s not found", postID)
 	}
 
-	// Проверяем, разрешены ли комментарии
 	if post.CommentsDisabled {
-		return []*model.Comment{}, nil // просто возвращаем пустой список
-	}
-
-	var filtered []*model.Comment
-	for _, comment := range s.comments {
-		if comment.PostID == postID {
-			filtered = append(filtered, comment)
-		}
-	}
-
-	if offset >= len(filtered) {
 		return []*model.Comment{}, nil
 	}
 
-	finish := offset + limit
-	if finish > len(filtered) {
-		finish = len(filtered)
+	// Получаем только корневые комментарии
+	var roots []*model.Comment
+	for _, comment := range s.comments {
+		if comment.PostID == postID && comment.ParentID == nil {
+			roots = append(roots, comment)
+		}
 	}
 
-	result := filtered[offset:finish]
-	return result, nil
+	// Пагинация по корневым
+	if offset >= len(roots) {
+		return []*model.Comment{}, nil
+	}
+	end := offset + limit
+	if end > len(roots) {
+		end = len(roots)
+	}
+	roots = roots[offset:end]
+
+	// Рекурсивно добавляем children
+	for _, comment := range roots {
+		s.buildChildren(comment)
+	}
+
+	return roots, nil
+}
+
+func (s *CommentMemoryStorage) buildChildren(parent *model.Comment) {
+	for _, comment := range s.comments {
+		if comment.ParentID != nil && *comment.ParentID == parent.ID {
+			parent.Children = append(parent.Children, comment)
+			s.buildChildren(comment) // рекурсия
+		}
+	}
 }
