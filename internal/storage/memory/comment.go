@@ -80,12 +80,14 @@ func (s *CommentMemoryStorage) GetComments(postID string, limit, offset int) ([]
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	post, err := s.postStorage.GetPostById(postID)
+	// Проверка - существует ли пост
+	curPost, err := s.postStorage.GetPostById(postID)
 	if err != nil {
 		return nil, fmt.Errorf("post with ID %s not found", postID)
 	}
 
-	if post.CommentsDisabled {
+	// Проверка - включены ли комментарии
+	if curPost.CommentsDisabled {
 		return []*model.Comment{}, nil
 	}
 
@@ -116,10 +118,13 @@ func (s *CommentMemoryStorage) GetComments(postID string, limit, offset int) ([]
 }
 
 func (s *CommentMemoryStorage) buildChildren(parent *model.Comment) {
+	// Очистка перед построением, чтобы избежать дублирования (в случае повторного чтения комментариев)
+	parent.Children = []*model.Comment{}
+
 	for _, comment := range s.comments {
 		if comment.ParentID != nil && *comment.ParentID == parent.ID {
 			parent.Children = append(parent.Children, comment)
-			s.buildChildren(comment) // рекурсия
+			s.buildChildren(comment)
 		}
 	}
 }
