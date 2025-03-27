@@ -1,0 +1,40 @@
+# Go
+/bin/
+/build/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go modules
+/go.sum
+/go.work
+/go.work.sum
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Dependency directories (vendor/)
+vendor/
+
+# gqlgen generated
+graph/generated/
+graph/model/
+
+# Logs
+*.log
+
+# dotenv
+.env
+.env.*
+
+# Docker
+*.pid
+*.sock
+docker-compose.override.yml
