@@ -16,7 +16,7 @@ type Comment {
 type Query {
   posts: [Post!]!
   post(id: ID!): Post
-  comments(postID: ID!, after: ID, limit: Int): [Comment!]!
+  comments(postID: ID!, limit: Int, offset: Int): [Comment!]!
 }
 
 type Mutation {

@@ -10,31 +10,35 @@ import (
 
 	"github.com/VitaminP8/postery/graph/generated"
 	"github.com/VitaminP8/postery/graph/model"
+	"github.com/VitaminP8/postery/internal/storage/memory"
 )
+
+var postStore = memory.NewPostMemoryStorage()
+var commentStore = memory.NewCommentMemoryStorage(postStore)
 
 // CreatePost is the resolver for the createPost field.
 func (r *mutationResolver) CreatePost(ctx context.Context, title string, content string) (*model.Post, error) {
-	panic(fmt.Errorf("not implemented: CreatePost - createPost"))
+	return postStore.CreatePost(title, content)
 }
 
 // CreateComment is the resolver for the createComment field.
 func (r *mutationResolver) CreateComment(ctx context.Context, postID string, parentID *string, content string) (*model.Comment, error) {
-	panic(fmt.Errorf("not implemented: CreateComment - createComment"))
+	return commentStore.CreateComment(postID, *parentID, content)
 }
 
 // Posts is the resolver for the posts field.
 func (r *queryResolver) Posts(ctx context.Context) ([]*model.Post, error) {
-	panic(fmt.Errorf("not implemented: Posts - posts"))
+	return postStore.GetAllPosts()
 }
 
 // Post is the resolver for the post field.
 func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error) {
-	panic(fmt.Errorf("not implemented: Post - post"))
+	return postStore.GetPostById(id)
 }
 
 // Comments is the resolver for the comments field.
-func (r *queryResolver) Comments(ctx context.Context, postID string, after *string, limit *int) ([]*model.Comment, error) {
-	panic(fmt.Errorf("not implemented: Comments - comments"))
+func (r *queryResolver) Comments(ctx context.Context, postID string, limit *int, offset *int) ([]*model.Comment, error) {
+	return commentStore.GetComments(postID, *limit, *offset)
 }
 
 // CommentAdded is the resolver for the commentAdded field.
