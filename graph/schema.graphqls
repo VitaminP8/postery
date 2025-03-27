@@ -3,6 +3,7 @@ type Post {
   title: String!
   content: String!
   commentsDisabled: Boolean!
+  comments(limit: Int, offset: Int): [Comment!]!
 }
 
 type Comment {

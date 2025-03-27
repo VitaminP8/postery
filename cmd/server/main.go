@@ -6,14 +6,21 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/VitaminP8/postery/internal/storage/memory"
 
 	"github.com/VitaminP8/postery/graph"
 	"github.com/VitaminP8/postery/graph/generated"
 )
 
 func main() {
+	postStore := memory.NewPostMemoryStorage()
+	commentStore := memory.NewCommentMemoryStorage(postStore)
+
 	// Инициализация резолверов
-	resolver := &graph.Resolver{}
+	resolver := &graph.Resolver{
+		PostStore:    postStore,
+		CommentStore: commentStore,
+	}
 
 	// Создаем новый сервер GraphQL с резолверами
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{

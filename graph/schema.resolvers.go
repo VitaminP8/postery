@@ -10,35 +10,46 @@ import (
 
 	"github.com/VitaminP8/postery/graph/generated"
 	"github.com/VitaminP8/postery/graph/model"
-	"github.com/VitaminP8/postery/internal/storage/memory"
 )
-
-var postStore = memory.NewPostMemoryStorage()
-var commentStore = memory.NewCommentMemoryStorage(postStore)
 
 // CreatePost is the resolver for the createPost field.
 func (r *mutationResolver) CreatePost(ctx context.Context, title string, content string) (*model.Post, error) {
-	return postStore.CreatePost(title, content)
+	return r.PostStore.CreatePost(title, content)
 }
 
 // CreateComment is the resolver for the createComment field.
 func (r *mutationResolver) CreateComment(ctx context.Context, postID string, parentID *string, content string) (*model.Comment, error) {
-	return commentStore.CreateComment(postID, *parentID, content)
+	return r.CommentStore.CreateComment(postID, *parentID, content)
+}
+
+// Comments is the resolver for the comments field. (подтягивает комментарии для поста)
+func (r *postResolver) Comments(ctx context.Context, obj *model.Post, limit *int, offset *int) ([]*model.Comment, error) {
+	// Значения по умолчанию
+	lim := 10
+	off := 0
+	if limit != nil {
+		lim = *limit
+	}
+	if offset != nil {
+		off = *offset
+	}
+
+	return r.CommentStore.GetComments(obj.ID, lim, off)
 }
 
 // Posts is the resolver for the posts field.
 func (r *queryResolver) Posts(ctx context.Context) ([]*model.Post, error) {
-	return postStore.GetAllPosts()
+	return r.PostStore.GetAllPosts()
 }
 
 // Post is the resolver for the post field.
 func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error) {
-	return postStore.GetPostById(id)
+	return r.PostStore.GetPostById(id)
 }
 
 // Comments is the resolver for the comments field.
 func (r *queryResolver) Comments(ctx context.Context, postID string, limit *int, offset *int) ([]*model.Comment, error) {
-	return commentStore.GetComments(postID, *limit, *offset)
+	return r.CommentStore.GetComments(postID, *limit, *offset)
 }
 
 // CommentAdded is the resolver for the commentAdded field.
@@ -49,6 +60,9 @@ func (r *subscriptionResolver) CommentAdded(ctx context.Context, postID string) 
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
+// Post returns generated.PostResolver implementation.
+func (r *Resolver) Post() generated.PostResolver { return &postResolver{r} }
+
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
@@ -56,5 +70,6 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 func (r *Resolver) Subscription() generated.SubscriptionResolver { return &subscriptionResolver{r} }
 
 type mutationResolver struct{ *Resolver }
+type postResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type subscriptionResolver struct{ *Resolver }
