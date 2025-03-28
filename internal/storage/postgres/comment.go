@@ -19,7 +19,7 @@ func NewCommentPostgresStorage() *CommentPostgresStorage {
 func (s *CommentPostgresStorage) CreateComment(ctx context.Context, postID, parentID, content string) (*model.Comment, error) {
 	userID, err := auth.GetUserIDFromContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("could not get user id from context: %w", err)
+		return nil, fmt.Errorf("unautorized: %w", err)
 	}
 
 	postIDint, err := strconv.Atoi(postID)

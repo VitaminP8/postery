@@ -18,7 +18,7 @@ func NewPostPostgresStorage() *PostPostgresStorage {
 func (s *PostPostgresStorage) CreatePost(ctx context.Context, title, content string) (*model.Post, error) {
 	userID, err := auth.GetUserIDFromContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("could not get user id from context:  %w", err)
+		return nil, fmt.Errorf("unautorized:  %w", err)
 	}
 
 	post := &models.Post{
