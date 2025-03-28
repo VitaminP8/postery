@@ -1,10 +1,10 @@
 package user
 
 import (
-	"github.com/VitaminP8/postery/models"
+	"github.com/VitaminP8/postery/graph/model"
 )
 
 type UserStorage interface {
-	RegisterUser(username, email, password string) (*models.User, error)
-	LoginUser(email, password string) (string, error) // JWT
+	RegisterUser(username, email, password string) (*model.User, error)
+	LoginUser(username, password string) (string, error) // JWT
 }

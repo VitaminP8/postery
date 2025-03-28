@@ -1,11 +1,14 @@
 package memory
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 
 	"github.com/VitaminP8/postery/graph/model"
+	"github.com/VitaminP8/postery/internal/auth"
 )
 
 type PostMemoryStorage struct {
@@ -21,7 +24,13 @@ func NewPostMemoryStorage() *PostMemoryStorage {
 	}
 }
 
-func (s *PostMemoryStorage) CreatePost(title, content string) (*model.Post, error) {
+func (s *PostMemoryStorage) CreatePost(ctx context.Context, title, content string) (*model.Post, error) {
+	// Контекст — это read-only структура (при каждом запросе он не обновляется, а создается заново)(поэтому над мьютексом)
+	userID, err := auth.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unautorized: %w", err)
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -32,6 +41,7 @@ func (s *PostMemoryStorage) CreatePost(title, content string) (*model.Post, erro
 		ID:               id,
 		Title:            title,
 		Content:          content,
+		AuthorID:         fmt.Sprint(userID),
 		CommentsDisabled: false,
 	}
 
@@ -55,7 +65,7 @@ func (s *PostMemoryStorage) GetAllPosts() ([]*model.Post, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	posts := make([]*model.Post, 0, len(s.posts))
+	var posts []*model.Post
 	for _, post := range s.posts {
 		posts = append(posts, post)
 	}
@@ -63,20 +73,34 @@ func (s *PostMemoryStorage) GetAllPosts() ([]*model.Post, error) {
 	return posts, nil
 }
 
-func (s *PostMemoryStorage) DisableComment(id string) error {
+func (s *PostMemoryStorage) DisableComment(ctx context.Context, id string) error {
+	userID, err := auth.GetUserIDFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("unautorized: %w", err)
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	post, exists := s.posts[id]
 	if !exists {
 		return errors.New("post not found")
+	}
+
+	if post.AuthorID != fmt.Sprint(userID) {
+		return errors.New("forbidden: not author")
 	}
 
 	post.CommentsDisabled = true
 	return nil
 }
 
-func (s *PostMemoryStorage) EnableComment(id string) error {
+func (s *PostMemoryStorage) EnableComment(ctx context.Context, id string) error {
+	userID, err := auth.GetUserIDFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("unautorized: %w", err)
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -85,17 +109,30 @@ func (s *PostMemoryStorage) EnableComment(id string) error {
 		return errors.New("post not found")
 	}
 
+	if post.AuthorID != fmt.Sprint(userID) {
+		return errors.New("forbidden: not author")
+	}
+
 	post.CommentsDisabled = false
 	return nil
 }
 
-func (s *PostMemoryStorage) DeletePostById(id string) error {
+func (s *PostMemoryStorage) DeletePostById(ctx context.Context, id string) error {
+	userID, err := auth.GetUserIDFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("unautorized: %w", err)
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	_, exists := s.posts[id]
+	post, exists := s.posts[id]
 	if !exists {
 		return errors.New("post not found")
+	}
+
+	if post.AuthorID != fmt.Sprint(userID) {
+		return errors.New("forbidden: not author")
 	}
 
 	delete(s.posts, id)

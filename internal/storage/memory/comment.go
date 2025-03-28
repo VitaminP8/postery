@@ -1,11 +1,13 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"sync"
 
 	"github.com/VitaminP8/postery/graph/model"
+	"github.com/VitaminP8/postery/internal/auth"
 	"github.com/VitaminP8/postery/internal/post"
 )
 
@@ -24,17 +26,20 @@ func NewCommentMemoryStorage(postStore post.PostStorage) *CommentMemoryStorage {
 	}
 }
 
-func (s *CommentMemoryStorage) CreateComment(postID, parentID, content string) (*model.Comment, error) {
+func (s *CommentMemoryStorage) CreateComment(ctx context.Context, postID, parentID, content string) (*model.Comment, error) {
+	userID, err := auth.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unautorized: %w", err)
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Проверка - существует ли пост
 	curPost, err := s.postStorage.GetPostById(postID)
 	if err != nil {
 		return nil, fmt.Errorf("post with ID %s not found", postID)
 	}
 
-	// Проверка - включены ли комментарии
 	if curPost.CommentsDisabled {
 		return nil, fmt.Errorf("comments are disabled for post %s", postID)
 	}
@@ -61,16 +66,17 @@ func (s *CommentMemoryStorage) CreateComment(postID, parentID, content string) (
 		PostID:   postID,
 		ParentID: parentPtr,
 		Content:  content,
+		AuthorID: fmt.Sprint(userID),
 		Children: []*model.Comment{},
 	}
 
-	//// в случае, если комментарий вложенный - добавляем его в Children родительского комментария
-	//if parentPtr != nil {
-	//	parent, ok := s.comments[*parentPtr]
-	//	if ok {
-	//		parent.Children = append(parent.Children, comment)
-	//	}
-	//}
+	// в случае, если комментарий вложенный - добавляем его в Children родительского комментария
+	if parentPtr != nil {
+		parent, ok := s.comments[*parentPtr]
+		if ok {
+			parent.Children = append(parent.Children, comment)
+		}
+	}
 
 	s.comments[id] = comment
 	return comment, nil
@@ -80,13 +86,11 @@ func (s *CommentMemoryStorage) GetComments(postID string, limit, offset int) ([]
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Проверка - существует ли пост
 	curPost, err := s.postStorage.GetPostById(postID)
 	if err != nil {
 		return nil, fmt.Errorf("post with ID %s not found", postID)
 	}
 
-	// Проверка - включены ли комментарии
 	if curPost.CommentsDisabled {
 		return []*model.Comment{}, nil
 	}
@@ -118,7 +122,7 @@ func (s *CommentMemoryStorage) GetComments(postID string, limit, offset int) ([]
 }
 
 func (s *CommentMemoryStorage) buildChildren(parent *model.Comment) {
-	// Очистка перед построением, чтобы избежать дублирования (в случае повторного чтения комментариев)
+	// Очистка перед построением, чтобы избежать дублирования
 	parent.Children = []*model.Comment{}
 
 	for _, comment := range s.comments {

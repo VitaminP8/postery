@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/VitaminP8/postery/graph/model"
 	"github.com/VitaminP8/postery/models"
 	"github.com/golang-jwt/jwt"
 
@@ -18,7 +19,7 @@ func NewUserPostgresStorage() *UserPostgresStorage {
 	return &UserPostgresStorage{}
 }
 
-func (s *UserPostgresStorage) RegisterUser(username, email, password string) (*models.User, error) {
+func (s *UserPostgresStorage) RegisterUser(username, email, password string) (*model.User, error) {
 	// проверка - существует ли такой пользователь
 	var existUser models.User
 	err := DB.Where("username = ?", username).First(&existUser).Error
@@ -42,7 +43,11 @@ func (s *UserPostgresStorage) RegisterUser(username, email, password string) (*m
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	return user, nil
+	return &model.User{
+		ID:       fmt.Sprint(user.ID),
+		Username: user.Username,
+		Email:    user.Email,
+	}, nil
 }
 
 func (s *UserPostgresStorage) LoginUser(username, password string) (string, error) {

@@ -24,16 +24,7 @@ func (r *mutationResolver) CreateComment(ctx context.Context, postID string, par
 
 // RegisterUser is the resolver for the registerUser field.
 func (r *mutationResolver) RegisterUser(ctx context.Context, username string, email string, password string) (*model.User, error) {
-	user, err := r.UserStore.RegisterUser(username, email, password)
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.User{
-		ID:       fmt.Sprint(user.ID),
-		Username: user.Username,
-		Email:    user.Email,
-	}, nil
+	return r.UserStore.RegisterUser(username, email, password)
 }
 
 // LoginUser is the resolver for the loginUser field.
