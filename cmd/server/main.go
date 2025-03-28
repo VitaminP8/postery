@@ -12,13 +12,14 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/VitaminP8/postery/internal/auth"
 	"github.com/VitaminP8/postery/internal/comment"
 	"github.com/VitaminP8/postery/internal/post"
 	"github.com/VitaminP8/postery/internal/user"
 
 	"github.com/VitaminP8/postery/graph"
 	"github.com/VitaminP8/postery/graph/generated"
-	"github.com/VitaminP8/postery/internal/storage/memory"
+	//"github.com/VitaminP8/postery/internal/storage/memory"
 	"github.com/VitaminP8/postery/internal/storage/postgres"
 	"github.com/VitaminP8/postery/models"
 )
@@ -41,15 +42,15 @@ func main() {
 		}
 
 		log.Println("Используется PostgreSQL хранилище")
-		// TODO: заменить на реализацию PostgreSQL
-		postStore = memory.NewPostMemoryStorage()
-		commentStore = memory.NewCommentMemoryStorage(postStore)
+		postStore = postgres.NewPostPostgresStorage()
+		commentStore = postgres.NewCommentPostgresStorage()
 		userStore = postgres.NewUserPostgresStorage()
 
 	case "memory":
 		log.Println("Используется in-memory хранилище")
-		postStore = memory.NewPostMemoryStorage()
-		commentStore = memory.NewCommentMemoryStorage(postStore)
+		// TODO: обновить реализацию для in-memory
+		postStore = postgres.NewPostPostgresStorage()
+		commentStore = postgres.NewCommentPostgresStorage()
 		userStore = postgres.NewUserPostgresStorage()
 
 	default:
@@ -68,9 +69,8 @@ func main() {
 		Resolvers: resolver,
 	}))
 
-	// Создаем HTTP маршруты
-	http.Handle("/query", srv)
-
+	// AuthMiddleware - http.Handler, который получает запрос, вытаскивает JWT токен из заголовка, проверяет и валидирует его, сохраняет userID в context,
+	http.Handle("/query", auth.AuthMiddleware(srv))
 	// Страница с тестовым интерфейсом Playground
 	http.Handle("/", playground.Handler("GraphQL Playground", "/query"))
 
