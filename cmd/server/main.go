@@ -7,12 +7,16 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/VitaminP8/postery/internal/storage/memory"
+	database "github.com/VitaminP8/postery/internal/storage/postgres"
 
 	"github.com/VitaminP8/postery/graph"
 	"github.com/VitaminP8/postery/graph/generated"
 )
 
 func main() {
+	database.InitDB()
+	defer database.CloseDB()
+
 	postStore := memory.NewPostMemoryStorage()
 	commentStore := memory.NewCommentMemoryStorage(postStore)
 
