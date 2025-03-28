@@ -14,12 +14,12 @@ import (
 
 // CreatePost is the resolver for the createPost field.
 func (r *mutationResolver) CreatePost(ctx context.Context, title string, content string) (*model.Post, error) {
-	return r.PostStore.CreatePost(title, content)
+	return r.PostStore.CreatePost(ctx, title, content)
 }
 
 // CreateComment is the resolver for the createComment field.
 func (r *mutationResolver) CreateComment(ctx context.Context, postID string, parentID *string, content string) (*model.Comment, error) {
-	return r.CommentStore.CreateComment(postID, *parentID, content)
+	return r.CommentStore.CreateComment(ctx, postID, *parentID, content)
 }
 
 // RegisterUser is the resolver for the registerUser field.
