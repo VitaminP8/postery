@@ -10,7 +10,7 @@ type PostStorage interface {
 	CreatePost(ctx context.Context, title, content string) (*model.Post, error)
 	GetPostById(id string) (*model.Post, error)
 	GetAllPosts() ([]*model.Post, error)
-	DisableComment(id string) error
-	EnableComment(id string) error
-	DeletePostById(id string) error
+	DisableComment(ctx context.Context, id string) error
+	EnableComment(ctx context.Context, id string) error
+	DeletePostById(ctx context.Context, id string) error
 }

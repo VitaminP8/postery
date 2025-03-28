@@ -47,7 +47,7 @@ func (r *mutationResolver) LoginUser(ctx context.Context, username string, passw
 
 // DisableComment is the resolver for the disableComment field.
 func (r *mutationResolver) DisableComment(ctx context.Context, id string) (bool, error) {
-	err := r.PostStore.DisableComment(id)
+	err := r.PostStore.DisableComment(ctx, id)
 	if err != nil {
 		return false, err
 	}
@@ -56,7 +56,7 @@ func (r *mutationResolver) DisableComment(ctx context.Context, id string) (bool,
 
 // EnableComment is the resolver for the enableComment field.
 func (r *mutationResolver) EnableComment(ctx context.Context, id string) (bool, error) {
-	err := r.PostStore.EnableComment(id)
+	err := r.PostStore.EnableComment(ctx, id)
 	if err != nil {
 		return false, err
 	}
@@ -65,7 +65,7 @@ func (r *mutationResolver) EnableComment(ctx context.Context, id string) (bool, 
 
 // DeletePostByID is the resolver for the deletePostById field.
 func (r *mutationResolver) DeletePostByID(ctx context.Context, id string) (bool, error) {
-	err := r.PostStore.DeletePostById(id)
+	err := r.PostStore.DeletePostById(ctx, id)
 	if err != nil {
 		return false, err
 	}

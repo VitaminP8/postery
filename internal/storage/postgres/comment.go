@@ -22,13 +22,24 @@ func (s *CommentPostgresStorage) CreateComment(ctx context.Context, postID, pare
 		return nil, fmt.Errorf("could not get user id from context: %w", err)
 	}
 
-	postIDUint, err := strconv.Atoi(postID)
+	postIDint, err := strconv.Atoi(postID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid post ID: %w", err)
 	}
+	postIDUint := uint(postIDint)
+
+	var post models.Post
+	err = DB.First(&post, postIDUint).Error
+	if err != nil {
+		return nil, fmt.Errorf("post not found: %w", err)
+	}
+
+	if post.CommentsDisabled {
+		return nil, fmt.Errorf("comments are disabled for this post")
+	}
 
 	comment := &models.Comment{
-		PostID:  uint(postIDUint),
+		PostID:  postIDUint,
 		UserID:  userID,
 		Content: content,
 	}
@@ -66,6 +77,16 @@ func (s *CommentPostgresStorage) GetComments(postID string, limit, offset int) (
 	postIDUint, err := strconv.Atoi(postID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid post ID: %w", err)
+	}
+
+	// Проверяем, если комментарии отключены — ничего не возвращаем
+	var post models.Post
+	err = DB.First(&post, postIDUint).Error
+	if err != nil {
+		return nil, fmt.Errorf("could not get post: %w", err)
+	}
+	if post.CommentsDisabled {
+		return []*model.Comment{}, nil
 	}
 
 	var rootComments []models.Comment
