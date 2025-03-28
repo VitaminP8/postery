@@ -25,6 +25,6 @@ type Comment struct {
 	Content  string
 	PostID   uint
 	UserID   uint
-	ParentID uint
+	ParentID *uint
 	Children []Comment `gorm:"foreignkey:ParentID"`
 }
