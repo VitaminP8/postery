@@ -33,6 +33,9 @@ type Mutation {
   createComment(postID: ID!, parentID: ID, content: String!): Comment!
   registerUser(username: String!, email: String!, password: String!): User!
   loginUser(username: String!, password: String!): String #JWT
+  disableComment(id: ID!): Boolean!
+  enableComment(id: ID!): Boolean!
+  deletePostById(id: ID!): Boolean!
 }
 
 type Subscription {

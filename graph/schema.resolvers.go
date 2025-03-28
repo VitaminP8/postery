@@ -45,6 +45,33 @@ func (r *mutationResolver) LoginUser(ctx context.Context, username string, passw
 	return &token, nil
 }
 
+// DisableComment is the resolver for the disableComment field.
+func (r *mutationResolver) DisableComment(ctx context.Context, id string) (bool, error) {
+	err := r.PostStore.DisableComment(id)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// EnableComment is the resolver for the enableComment field.
+func (r *mutationResolver) EnableComment(ctx context.Context, id string) (bool, error) {
+	err := r.PostStore.EnableComment(id)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// DeletePostByID is the resolver for the deletePostById field.
+func (r *mutationResolver) DeletePostByID(ctx context.Context, id string) (bool, error) {
+	err := r.PostStore.DeletePostById(id)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // Comments is the resolver for the comments field. (подтягивает комментарии для поста)
 func (r *postResolver) Comments(ctx context.Context, obj *model.Post, limit *int, offset *int) ([]*model.Comment, error) {
 	lim := 10
