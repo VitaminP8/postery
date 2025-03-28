@@ -22,9 +22,31 @@ func (r *mutationResolver) CreateComment(ctx context.Context, postID string, par
 	return r.CommentStore.CreateComment(postID, *parentID, content)
 }
 
+// RegisterUser is the resolver for the registerUser field.
+func (r *mutationResolver) RegisterUser(ctx context.Context, username string, email string, password string) (*model.User, error) {
+	user, err := r.UserStore.RegisterUser(username, email, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.User{
+		ID:       fmt.Sprint(user.ID),
+		Username: user.Username,
+		Email:    user.Email,
+	}, nil
+}
+
+// LoginUser is the resolver for the loginUser field.
+func (r *mutationResolver) LoginUser(ctx context.Context, username string, password string) (*string, error) {
+	token, err := r.UserStore.LoginUser(username, password)
+	if err != nil {
+		return nil, err
+	}
+	return &token, nil
+}
+
 // Comments is the resolver for the comments field. (подтягивает комментарии для поста)
 func (r *postResolver) Comments(ctx context.Context, obj *model.Post, limit *int, offset *int) ([]*model.Comment, error) {
-	// Значения по умолчанию
 	lim := 10
 	off := 0
 	if limit != nil {

@@ -12,11 +12,14 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/VitaminP8/postery/internal/comment"
+	"github.com/VitaminP8/postery/internal/post"
+	"github.com/VitaminP8/postery/internal/user"
 
 	"github.com/VitaminP8/postery/graph"
 	"github.com/VitaminP8/postery/graph/generated"
 	"github.com/VitaminP8/postery/internal/storage/memory"
-	database "github.com/VitaminP8/postery/internal/storage/postgres"
+	"github.com/VitaminP8/postery/internal/storage/postgres"
 	"github.com/VitaminP8/postery/models"
 )
 
@@ -24,14 +27,15 @@ func main() {
 	storageType := flag.String("storage", "memory", "Тип хранилища: storage или postgres")
 	flag.Parse()
 
-	postStore := memory.NewPostMemoryStorage()
-	commentStore := memory.NewCommentMemoryStorage(postStore)
+	var postStore post.PostStorage
+	var commentStore comment.CommentStorage
+	var userStore user.UserStorage
 
 	switch *storageType {
 	case "postgres":
-		database.InitDB()
+		postgres.InitDB()
 		// миграция таблиц
-		err := database.DB.AutoMigrate(&models.User{}, &models.Post{}, &models.Comment{}).Error
+		err := postgres.DB.AutoMigrate(&models.User{}, &models.Post{}, &models.Comment{}).Error
 		if err != nil {
 			log.Fatalf("failed to migrate database: %v", err)
 		}
@@ -40,11 +44,13 @@ func main() {
 		// TODO: заменить на реализацию PostgreSQL
 		postStore = memory.NewPostMemoryStorage()
 		commentStore = memory.NewCommentMemoryStorage(postStore)
+		userStore = postgres.NewUserPostgresStorage()
 
 	case "memory":
 		log.Println("Используется in-memory хранилище")
 		postStore = memory.NewPostMemoryStorage()
 		commentStore = memory.NewCommentMemoryStorage(postStore)
+		userStore = postgres.NewUserPostgresStorage()
 
 	default:
 		log.Fatalf("неизвестный тип хранилища: %s", *storageType)
@@ -54,6 +60,7 @@ func main() {
 	resolver := &graph.Resolver{
 		PostStore:    postStore,
 		CommentStore: commentStore,
+		UserStore:    userStore,
 	}
 
 	// Создаем новый сервер GraphQL с резолверами
@@ -95,7 +102,7 @@ func main() {
 	log.Println("Завершение...")
 
 	if *storageType == "postgres" {
-		database.CloseDB()
+		postgres.CloseDB()
 	}
 
 	if err := server.Shutdown(context.Background()); err != nil {

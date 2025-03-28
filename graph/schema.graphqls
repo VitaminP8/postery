@@ -1,3 +1,9 @@
+type User {
+  id: ID!
+  username: String!
+  email: String!
+}
+
 type Post {
   id: ID!
   title: String!
@@ -23,6 +29,8 @@ type Query {
 type Mutation {
   createPost(title: String!, content: String!): Post!
   createComment(postID: ID!, parentID: ID, content: String!): Comment!
+  registerUser(username: String!, email: String!, password: String!): User!
+  loginUser(username: String!, password: String!): String #JWT
 }
 
 type Subscription {
