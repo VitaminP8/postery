@@ -3,8 +3,8 @@ package postgres
 import (
 	"fmt"
 	"log"
-	"os"
 
+	"github.com/VitaminP8/postery/internal/config"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/joho/godotenv"
@@ -21,12 +21,12 @@ func InitDB() {
 
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_SSLMODE"),
+		config.GetEnv("DB_HOST"),
+		config.GetEnv("DB_USER"),
+		config.GetEnv("DB_PASSWORD"),
+		config.GetEnv("DB_NAME"),
+		config.GetEnv("DB_PORT"),
+		config.GetEnv("DB_SSLMODE"),
 	)
 	DB, err = gorm.Open("postgres", dsn)
 	if err != nil {
