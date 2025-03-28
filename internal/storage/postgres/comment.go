@@ -74,7 +74,7 @@ func (s *CommentPostgresStorage) GetComments(postID string, limit, offset int) (
 		Offset(offset).
 		Find(&rootComments).Error
 	if err != nil {
-		return nil, fmt.Errorf("could not get root comments: %w", err)
+		return nil, fmt.Errorf("could not get root comments:  %w", err)
 	}
 
 	var results []*model.Comment
