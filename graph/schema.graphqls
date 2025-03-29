@@ -10,7 +10,7 @@ type Post {
   content: String!
   commentsDisabled: Boolean!
   authorID: ID!
-  comments(limit: Int, offset: Int): [Comment!]!
+  comments(limit: Int, offset: Int): CommentConnection!
 }
 
 type Comment {
@@ -19,13 +19,22 @@ type Comment {
   parentID: ID
   content: String!
   authorID: ID!
+  createdAt: String!
+  hasReplies: Boolean!
   children: [Comment!]!
+}
+
+type CommentConnection {
+  items: [Comment!]!
+  hasMore: Boolean!
+  nextOffset: Int!
 }
 
 type Query {
   posts: [Post!]!
   post(id: ID!): Post
-  comments(postID: ID!, limit: Int, offset: Int): [Comment!]!
+  comments(postID: ID!, limit: Int, offset: Int): CommentConnection!
+  replies(parentID: ID!, limit: Int, offset: Int): CommentConnection!
 }
 
 type Mutation {

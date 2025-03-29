@@ -22,9 +22,10 @@ type Post struct {
 
 type Comment struct {
 	gorm.Model
-	Content  string
-	PostID   uint
-	UserID   uint
-	ParentID *uint
-	Children []Comment `gorm:"foreignkey:ParentID"`
+	Content    string
+	PostID     uint
+	UserID     uint
+	ParentID   *uint
+	HasReplies bool      `gorm:"default:false"`
+	Children   []Comment `gorm:"foreignkey:ParentID"`
 }

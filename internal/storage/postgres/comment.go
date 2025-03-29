@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/VitaminP8/postery/graph/model"
 	"github.com/VitaminP8/postery/internal/auth"
@@ -17,6 +18,10 @@ func NewCommentPostgresStorage() *CommentPostgresStorage {
 }
 
 func (s *CommentPostgresStorage) CreateComment(ctx context.Context, postID, parentID, content string) (*model.Comment, error) {
+	if len(content) > 2000 || len(content) == 0 {
+		return nil, fmt.Errorf("content is too long or empty")
+	}
+
 	userID, err := auth.GetUserIDFromContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unautorized: %w", err)
@@ -39,9 +44,10 @@ func (s *CommentPostgresStorage) CreateComment(ctx context.Context, postID, pare
 	}
 
 	comment := &models.Comment{
-		PostID:  postIDUint,
-		UserID:  userID,
-		Content: content,
+		PostID:     postIDUint,
+		UserID:     userID,
+		Content:    content,
+		HasReplies: false,
 	}
 
 	if parentID != "" {
@@ -51,6 +57,8 @@ func (s *CommentPostgresStorage) CreateComment(ctx context.Context, postID, pare
 		}
 		parentUint := uint(parentInt)
 		comment.ParentID = &parentUint
+
+		DB.Model(&models.Comment{}).Where("id = ?", parentUint).Update("has_replies", true)
 	}
 
 	err = DB.Create(comment).Error
@@ -58,22 +66,26 @@ func (s *CommentPostgresStorage) CreateComment(ctx context.Context, postID, pare
 		return nil, fmt.Errorf("could not create comment: %w", err)
 	}
 
-	result := &model.Comment{
-		ID:       fmt.Sprint(comment.ID),
-		PostID:   fmt.Sprint(comment.PostID),
-		Content:  comment.Content,
-		AuthorID: fmt.Sprint(comment.UserID),
-		Children: []*model.Comment{},
-	}
+	var parentStr *string
 	if comment.ParentID != nil {
 		pid := fmt.Sprint(*comment.ParentID)
-		result.ParentID = &pid
+		parentStr = &pid
+	}
+	result := &model.Comment{
+		ID:         fmt.Sprint(comment.ID),
+		PostID:     fmt.Sprint(comment.PostID),
+		Content:    comment.Content,
+		AuthorID:   fmt.Sprint(comment.UserID),
+		ParentID:   parentStr,
+		CreatedAt:  comment.CreatedAt.Format(time.RFC3339),
+		HasReplies: comment.HasReplies,
+		Children:   []*model.Comment{},
 	}
 
 	return result, nil
 }
 
-func (s *CommentPostgresStorage) GetComments(postID string, limit, offset int) ([]*model.Comment, error) {
+func (s *CommentPostgresStorage) GetComments(postID string, limit, offset int) (*model.CommentConnection, error) {
 	postIDUint, err := strconv.Atoi(postID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid post ID: %w", err)
@@ -86,50 +98,91 @@ func (s *CommentPostgresStorage) GetComments(postID string, limit, offset int) (
 		return nil, fmt.Errorf("could not get post: %w", err)
 	}
 	if post.CommentsDisabled {
-		return []*model.Comment{}, nil
+		return &model.CommentConnection{
+			Items:      []*model.Comment{},
+			HasMore:    false,
+			NextOffset: offset,
+		}, nil
 	}
 
 	var rootComments []models.Comment
 	err = DB.Where("post_id = ? AND parent_id IS NULL", postIDUint).
-		Limit(limit).
+		Order("created_at").
+		Limit(limit + 1). // Загружаем +1 чтобы проверить hasMore
 		Offset(offset).
 		Find(&rootComments).Error
 	if err != nil {
 		return nil, fmt.Errorf("could not get root comments:  %w", err)
 	}
 
+	// узнаем, останутся ли комментарии после limit
+	hasMore := len(rootComments) > limit
+	if hasMore {
+		rootComments = rootComments[:limit]
+	}
+
 	var results []*model.Comment
 	for _, root := range rootComments {
 		c := &model.Comment{
-			ID:       fmt.Sprint(root.ID),
-			PostID:   fmt.Sprint(root.PostID),
-			Content:  root.Content,
-			AuthorID: fmt.Sprint(root.UserID),
-			Children: []*model.Comment{},
+			ID:         fmt.Sprint(root.ID),
+			PostID:     fmt.Sprint(root.PostID),
+			Content:    root.Content,
+			AuthorID:   fmt.Sprint(root.UserID),
+			HasReplies: root.HasReplies,
+			CreatedAt:  root.CreatedAt.Format(time.RFC3339),
+			Children:   []*model.Comment{},
 		}
-		fetchChildren(&root, c)
 		results = append(results, c)
 	}
 
-	return results, nil
+	return &model.CommentConnection{
+		Items:      results,
+		HasMore:    hasMore,
+		NextOffset: offset + limit,
+	}, nil
 }
 
-func fetchChildren(dbParent *models.Comment, gqlParent *model.Comment) {
-	var children []models.Comment
-	DB.Where("parent_id = ?", dbParent.ID).Find(&children)
-
-	for _, child := range children {
-		mc := &model.Comment{
-			ID:       fmt.Sprint(child.ID),
-			PostID:   fmt.Sprint(child.PostID),
-			Content:  child.Content,
-			AuthorID: fmt.Sprint(child.UserID),
-			Children: []*model.Comment{},
-		}
-		pid := fmt.Sprint(child.ParentID)
-		mc.ParentID = &pid
-
-		gqlParent.Children = append(gqlParent.Children, mc)
-		fetchChildren(&child, mc)
+func (s *CommentPostgresStorage) GetReplies(parentID string, limit, offset int) (*model.CommentConnection, error) {
+	parentUint, err := strconv.Atoi(parentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid parent ID: %w", err)
 	}
+
+	var replies []models.Comment
+	err = DB.Where("parent_id = ?", parentUint).
+		Order("created_at").
+		Limit(limit + 1).
+		Offset(offset).
+		Find(&replies).Error
+	if err != nil {
+		return nil, fmt.Errorf("could not get replies: %w", err)
+	}
+
+	// узнаем, останутся ли комментарии после limit
+	hasMore := len(replies) > limit
+	if hasMore {
+		replies = replies[:limit]
+	}
+
+	var results []*model.Comment
+	for _, r := range replies {
+		pid := fmt.Sprint(*r.ParentID)
+		curRep := &model.Comment{
+			ID:         fmt.Sprint(r.ID),
+			PostID:     fmt.Sprint(r.PostID),
+			ParentID:   &pid,
+			Content:    r.Content,
+			AuthorID:   fmt.Sprint(r.UserID),
+			HasReplies: r.HasReplies,
+			CreatedAt:  r.CreatedAt.Format(time.RFC3339),
+			Children:   []*model.Comment{},
+		}
+		results = append(results, curRep)
+	}
+
+	return &model.CommentConnection{
+		Items:      results,
+		HasMore:    hasMore,
+		NextOffset: offset + limit,
+	}, nil
 }

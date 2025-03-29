@@ -3,8 +3,10 @@ package memory
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/VitaminP8/postery/graph/model"
 	"github.com/VitaminP8/postery/internal/auth"
@@ -27,6 +29,10 @@ func NewCommentMemoryStorage(postStore post.PostStorage) *CommentMemoryStorage {
 }
 
 func (s *CommentMemoryStorage) CreateComment(ctx context.Context, postID, parentID, content string) (*model.Comment, error) {
+	if len(content) > 2000 || len(content) == 0 {
+		return nil, fmt.Errorf("content is too long or empty")
+	}
+
 	userID, err := auth.GetUserIDFromContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unautorized: %w", err)
@@ -50,7 +56,6 @@ func (s *CommentMemoryStorage) CreateComment(ctx context.Context, postID, parent
 	var parentPtr *string
 	if parentID != "" {
 		parentPtr = &parentID
-
 		// проверяем что родительский комментарий существует и принадлежит тому же посту
 		parentComment, ok := s.comments[parentID]
 		if !ok {
@@ -59,15 +64,18 @@ func (s *CommentMemoryStorage) CreateComment(ctx context.Context, postID, parent
 		if parentComment.PostID != postID {
 			return nil, fmt.Errorf("parent comment belongs to a different post")
 		}
+		parentComment.HasReplies = true
 	}
 
 	comment := &model.Comment{
-		ID:       id,
-		PostID:   postID,
-		ParentID: parentPtr,
-		Content:  content,
-		AuthorID: fmt.Sprint(userID),
-		Children: []*model.Comment{},
+		ID:         id,
+		PostID:     postID,
+		ParentID:   parentPtr,
+		Content:    content,
+		AuthorID:   fmt.Sprint(userID),
+		CreatedAt:  time.Now().Format(time.RFC3339),
+		HasReplies: false,
+		Children:   []*model.Comment{},
 	}
 
 	// в случае, если комментарий вложенный - добавляем его в Children родительского комментария
@@ -82,7 +90,7 @@ func (s *CommentMemoryStorage) CreateComment(ctx context.Context, postID, parent
 	return comment, nil
 }
 
-func (s *CommentMemoryStorage) GetComments(postID string, limit, offset int) ([]*model.Comment, error) {
+func (s *CommentMemoryStorage) GetComments(postID string, limit, offset int) (*model.CommentConnection, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -90,9 +98,12 @@ func (s *CommentMemoryStorage) GetComments(postID string, limit, offset int) ([]
 	if err != nil {
 		return nil, fmt.Errorf("post with ID %s not found", postID)
 	}
-
 	if curPost.CommentsDisabled {
-		return []*model.Comment{}, nil
+		return &model.CommentConnection{
+			Items:      []*model.Comment{},
+			HasMore:    false,
+			NextOffset: offset,
+		}, nil
 	}
 
 	// Получаем только корневые комментарии
@@ -103,32 +114,72 @@ func (s *CommentMemoryStorage) GetComments(postID string, limit, offset int) ([]
 		}
 	}
 
+	// сортировка корневых комментариев по createdAt
+	sort.Slice(roots, func(i, j int) bool {
+		return roots[i].CreatedAt < roots[j].CreatedAt
+	})
+
 	// Пагинация по корневым
 	if offset >= len(roots) {
-		return []*model.Comment{}, nil
+		return &model.CommentConnection{
+			Items:      []*model.Comment{},
+			HasMore:    false,
+			NextOffset: offset,
+		}, nil
 	}
+
 	end := offset + limit
 	if end > len(roots) {
 		end = len(roots)
 	}
-	roots = roots[offset:end]
+	items := roots[offset:end]
 
-	// Рекурсивно добавляем children
-	for _, comment := range roots {
-		s.buildChildren(comment)
-	}
+	// узнаем, останутся ли комментарии после limit
+	hasMore := end < len(roots)
 
-	return roots, nil
+	return &model.CommentConnection{
+		Items:      items,
+		HasMore:    hasMore,
+		NextOffset: offset + limit,
+	}, nil
 }
 
-func (s *CommentMemoryStorage) buildChildren(parent *model.Comment) {
-	// Очистка перед построением, чтобы избежать дублирования
-	parent.Children = []*model.Comment{}
+func (s *CommentMemoryStorage) GetReplies(parentID string, limit, offset int) (*model.CommentConnection, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	for _, comment := range s.comments {
-		if comment.ParentID != nil && *comment.ParentID == parent.ID {
-			parent.Children = append(parent.Children, comment)
-			s.buildChildren(comment)
-		}
+	parent, ok := s.comments[parentID]
+	if !ok {
+		return nil, fmt.Errorf("parent comment with ID %s not found", parentID)
 	}
+
+	children := parent.Children
+
+	// Сортируем по CreatedAt (по возрастанию)
+	sort.Slice(children, func(i, j int) bool {
+		return children[i].CreatedAt < children[j].CreatedAt
+	})
+
+	if offset >= len(children) {
+		return &model.CommentConnection{
+			Items:      []*model.Comment{},
+			HasMore:    false,
+			NextOffset: offset,
+		}, nil
+	}
+
+	end := offset + limit
+	if end > len(children) {
+		end = len(children)
+	}
+	items := children[offset:end]
+
+	// узнаем, останутся ли комментарии после limit
+	hasMore := end < len(children)
+
+	return &model.CommentConnection{
+		Items:      items,
+		HasMore:    hasMore,
+		NextOffset: offset + limit,
+	}, nil
 }

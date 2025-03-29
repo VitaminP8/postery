@@ -64,7 +64,7 @@ func (r *mutationResolver) DeletePostByID(ctx context.Context, id string) (bool,
 }
 
 // Comments is the resolver for the comments field. (подтягивает комментарии для поста)
-func (r *postResolver) Comments(ctx context.Context, obj *model.Post, limit *int, offset *int) ([]*model.Comment, error) {
+func (r *postResolver) Comments(ctx context.Context, obj *model.Post, limit *int, offset *int) (*model.CommentConnection, error) {
 	lim := 10
 	off := 0
 	if limit != nil {
@@ -88,8 +88,29 @@ func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error
 }
 
 // Comments is the resolver for the comments field.
-func (r *queryResolver) Comments(ctx context.Context, postID string, limit *int, offset *int) ([]*model.Comment, error) {
-	return r.CommentStore.GetComments(postID, *limit, *offset)
+func (r *queryResolver) Comments(ctx context.Context, postID string, limit *int, offset *int) (*model.CommentConnection, error) {
+	lim := 10
+	off := 0
+	if limit != nil {
+		lim = *limit
+	}
+	if offset != nil {
+		off = *offset
+	}
+	return r.CommentStore.GetComments(postID, lim, off)
+}
+
+// Replies is the resolver for the replies field.
+func (r *queryResolver) Replies(ctx context.Context, parentID string, limit *int, offset *int) (*model.CommentConnection, error) {
+	lim := 10
+	off := 0
+	if limit != nil {
+		lim = *limit
+	}
+	if offset != nil {
+		off = *offset
+	}
+	return r.CommentStore.GetReplies(parentID, lim, off)
 }
 
 // CommentAdded is the resolver for the commentAdded field.
