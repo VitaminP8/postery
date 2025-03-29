@@ -11,6 +11,7 @@ import (
 	"github.com/VitaminP8/postery/graph/model"
 	"github.com/VitaminP8/postery/internal/auth"
 	"github.com/VitaminP8/postery/internal/post"
+	"github.com/VitaminP8/postery/internal/subscription"
 )
 
 type CommentMemoryStorage struct {
@@ -18,13 +19,15 @@ type CommentMemoryStorage struct {
 	comments    map[string]*model.Comment
 	nextID      int              // Для хранения актуального ID (можно было использовать UUID)
 	postStorage post.PostStorage // Хранилище постов (внедрение зависимости (DI))
+	manager     subscription.Manager
 }
 
-func NewCommentMemoryStorage(postStore post.PostStorage) *CommentMemoryStorage {
+func NewCommentMemoryStorage(postStore post.PostStorage, manager subscription.Manager) *CommentMemoryStorage {
 	return &CommentMemoryStorage{
 		comments:    make(map[string]*model.Comment),
 		nextID:      1,
 		postStorage: postStore,
+		manager:     manager,
 	}
 }
 
@@ -87,6 +90,11 @@ func (s *CommentMemoryStorage) CreateComment(ctx context.Context, postID, parent
 	}
 
 	s.comments[id] = comment
+
+	if s.manager != nil {
+		s.manager.Publish(postID, comment)
+	}
+
 	return comment, nil
 }
 

@@ -6,7 +6,6 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/VitaminP8/postery/graph/generated"
 	"github.com/VitaminP8/postery/graph/model"
@@ -115,7 +114,15 @@ func (r *queryResolver) Replies(ctx context.Context, parentID string, limit *int
 
 // CommentAdded is the resolver for the commentAdded field.
 func (r *subscriptionResolver) CommentAdded(ctx context.Context, postID string) (<-chan *model.Comment, error) {
-	panic(fmt.Errorf("not implemented: CommentAdded - commentAdded"))
+	ch, cancel := r.SubscriptionManager.Subscribe(postID)
+
+	// Обработка отмены (например, клиент закрыл соединение)
+	go func() {
+		<-ctx.Done()
+		cancel()
+	}()
+
+	return ch, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.

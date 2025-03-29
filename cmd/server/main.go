@@ -16,6 +16,7 @@ import (
 	"github.com/VitaminP8/postery/internal/comment"
 	"github.com/VitaminP8/postery/internal/config"
 	"github.com/VitaminP8/postery/internal/post"
+	"github.com/VitaminP8/postery/internal/subscription"
 	"github.com/VitaminP8/postery/internal/user"
 
 	"github.com/VitaminP8/postery/graph"
@@ -35,6 +36,7 @@ func main() {
 	var postStore post.PostStorage
 	var commentStore comment.CommentStorage
 	var userStore user.UserStorage
+	var subMngr subscription.Manager
 
 	switch *storageType {
 	case "postgres":
@@ -45,15 +47,16 @@ func main() {
 		}
 
 		log.Println("Используется PostgreSQL хранилище")
+		subMngr = subscription.NewSubscriptionManager()
 		postStore = postgres.NewPostPostgresStorage()
-		commentStore = postgres.NewCommentPostgresStorage()
+		commentStore = postgres.NewCommentPostgresStorage(subMngr)
 		userStore = postgres.NewUserPostgresStorage()
 
 	case "memory":
 		log.Println("Используется in-memory хранилище")
-		// TODO: обновить реализацию для in-memory
+		subMngr = subscription.NewSubscriptionManager()
 		postStore = memory.NewPostMemoryStorage()
-		commentStore = memory.NewCommentMemoryStorage(postStore)
+		commentStore = memory.NewCommentMemoryStorage(postStore, subMngr)
 		userStore = memory.NewUserMemoryStorage()
 
 	default:
@@ -62,9 +65,10 @@ func main() {
 
 	// Инициализация резолвера
 	resolver := &graph.Resolver{
-		PostStore:    postStore,
-		CommentStore: commentStore,
-		UserStore:    userStore,
+		PostStore:           postStore,
+		CommentStore:        commentStore,
+		UserStore:           userStore,
+		SubscriptionManager: subMngr,
 	}
 
 	// Создаем новый сервер GraphQL с резолверами

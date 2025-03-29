@@ -8,13 +8,18 @@ import (
 
 	"github.com/VitaminP8/postery/graph/model"
 	"github.com/VitaminP8/postery/internal/auth"
+	"github.com/VitaminP8/postery/internal/subscription"
 	"github.com/VitaminP8/postery/models"
 )
 
-type CommentPostgresStorage struct{}
+type CommentPostgresStorage struct {
+	manager subscription.Manager
+}
 
-func NewCommentPostgresStorage() *CommentPostgresStorage {
-	return &CommentPostgresStorage{}
+func NewCommentPostgresStorage(manager subscription.Manager) *CommentPostgresStorage {
+	return &CommentPostgresStorage{
+		manager: manager,
+	}
 }
 
 func (s *CommentPostgresStorage) CreateComment(ctx context.Context, postID, parentID, content string) (*model.Comment, error) {
@@ -80,6 +85,10 @@ func (s *CommentPostgresStorage) CreateComment(ctx context.Context, postID, pare
 		CreatedAt:  comment.CreatedAt.Format(time.RFC3339),
 		HasReplies: comment.HasReplies,
 		Children:   []*model.Comment{},
+	}
+
+	if s.manager != nil {
+		s.manager.Publish(postID, result)
 	}
 
 	return result, nil
