@@ -10,7 +10,6 @@ import (
 	"github.com/VitaminP8/postery/internal/auth"
 )
 
-// MockPostStorage - мок для интерфейса PostStorage
 type MockPostStorage struct {
 	posts map[string]*model.Post
 	mu    sync.Mutex

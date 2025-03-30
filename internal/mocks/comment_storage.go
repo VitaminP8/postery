@@ -14,7 +14,6 @@ import (
 	"github.com/VitaminP8/postery/internal/subscription"
 )
 
-// MockCommentStorage реализует интерфейс comment.CommentStorage для тестирования
 type MockCommentStorage struct {
 	mu        sync.Mutex
 	comments  map[string]*model.Comment
@@ -24,7 +23,6 @@ type MockCommentStorage struct {
 	manager   subscription.Manager // Для уведомлений о новых комментариях
 }
 
-// NewMockCommentStorage создает новый экземпляр мока для хранилища комментариев
 func NewMockCommentStorage(manager subscription.Manager) *MockCommentStorage {
 	return &MockCommentStorage{
 		comments:  make(map[string]*model.Comment),
@@ -35,44 +33,34 @@ func NewMockCommentStorage(manager subscription.Manager) *MockCommentStorage {
 	}
 }
 
-// CreateComment имитирует создание комментария
 func (m *MockCommentStorage) CreateComment(ctx context.Context, postID, parentID, content string) (*model.Comment, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Извлекаем ID пользователя из контекста
 	userID, err := auth.GetUserIDFromContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unautorized: %w", err)
 	}
 
-	// Проверяем длину контента
 	if len(content) > 2000 || len(content) == 0 {
 		return nil, errors.New("content is too long or empty")
 	}
 
-	// Создаем ID для нового комментария
 	commentID := strconv.Itoa(m.nextID)
 	m.nextID++
 
-	// Обрабатываем родительский комментарий, если указан
 	var parentIDPtr *string
 	if parentID != "" {
-		// Проверяем существование родительского комментария
-
 		if _, exists := m.comments[parentID]; !exists {
 			return nil, errors.New("parent comment not found")
 		}
 		parentIDPtr = &parentID
 
-		// Обновляем родительский комментарий
 		m.comments[parentID].HasReplies = true
 
-		// Добавляем в список дочерних
 		m.parentIDs[parentID] = append(m.parentIDs[parentID], commentID)
 	}
 
-	// Создаем новый комментарий
 	comment := &model.Comment{
 		ID:         commentID,
 		PostID:     postID,
@@ -84,11 +72,9 @@ func (m *MockCommentStorage) CreateComment(ctx context.Context, postID, parentID
 		Children:   []*model.Comment{},
 	}
 
-	// Сохраняем комментарий
 	m.comments[commentID] = comment
 	m.postIDs[postID] = append(m.postIDs[postID], commentID)
 
-	// Уведомляем подписчиков
 	if m.manager != nil {
 		m.manager.Publish(postID, comment)
 	}
@@ -96,12 +82,10 @@ func (m *MockCommentStorage) CreateComment(ctx context.Context, postID, parentID
 	return comment, nil
 }
 
-// GetComments возвращает комментарии к посту с пагинацией
 func (m *MockCommentStorage) GetComments(postID string, limit, offset int) (*model.CommentConnection, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Получаем все ID комментариев для указанного поста
 	commentIDs, exists := m.postIDs[postID]
 	if !exists {
 		return &model.CommentConnection{
@@ -111,7 +95,6 @@ func (m *MockCommentStorage) GetComments(postID string, limit, offset int) (*mod
 		}, nil
 	}
 
-	// Фильтруем только корневые комментарии
 	var rootComments []*model.Comment
 	for _, id := range commentIDs {
 		comment := m.comments[id]
@@ -120,12 +103,10 @@ func (m *MockCommentStorage) GetComments(postID string, limit, offset int) (*mod
 		}
 	}
 
-	// Сортируем по времени создания (возрастание)
 	sort.Slice(rootComments, func(i, j int) bool {
 		return rootComments[i].CreatedAt < rootComments[j].CreatedAt
 	})
 
-	// Применяем пагинацию
 	totalCount := len(rootComments)
 	hasMore := offset+limit < totalCount
 
@@ -145,17 +126,14 @@ func (m *MockCommentStorage) GetComments(postID string, limit, offset int) (*mod
 	}, nil
 }
 
-// GetReplies возвращает ответы на комментарий с пагинацией
 func (m *MockCommentStorage) GetReplies(parentID string, limit, offset int) (*model.CommentConnection, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Проверяем существование родительского комментария
 	if _, exists := m.comments[parentID]; !exists {
 		return nil, errors.New("parent comment not found")
 	}
 
-	// Получаем ID всех дочерних комментариев
 	childIDs, exists := m.parentIDs[parentID]
 	if !exists {
 		return &model.CommentConnection{
@@ -165,18 +143,15 @@ func (m *MockCommentStorage) GetReplies(parentID string, limit, offset int) (*mo
 		}, nil
 	}
 
-	// Собираем все дочерние комментарии
 	var childComments []*model.Comment
 	for _, id := range childIDs {
 		childComments = append(childComments, m.comments[id])
 	}
 
-	// Сортируем по времени создания (возрастание)
 	sort.Slice(childComments, func(i, j int) bool {
 		return childComments[i].CreatedAt < childComments[j].CreatedAt
 	})
 
-	// Применяем пагинацию
 	totalCount := len(childComments)
 	hasMore := offset+limit < totalCount
 

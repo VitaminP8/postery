@@ -2,18 +2,17 @@ package mocks
 
 import (
 	"sync"
+	"time"
 
 	"github.com/VitaminP8/postery/graph/model"
 )
 
-// MockSubscriptionManager - мок для интерфейса Manager подписок
 type MockSubscriptionManager struct {
 	mu            sync.Mutex
 	subs          map[string][]chan *model.Comment // postID -> список каналов подписчиков
 	notifications map[string][]*model.Comment      // Для отслеживания в тестах
 }
 
-// NewMockSubscriptionManager создает новый экземпляр мока для менеджера подписок
 func NewMockSubscriptionManager() *MockSubscriptionManager {
 	return &MockSubscriptionManager{
 		subs:          make(map[string][]chan *model.Comment),
@@ -21,7 +20,6 @@ func NewMockSubscriptionManager() *MockSubscriptionManager {
 	}
 }
 
-// Subscribe имитирует подписку на комментарии поста
 func (m *MockSubscriptionManager) Subscribe(postID string) (<-chan *model.Comment, func()) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -48,17 +46,14 @@ func (m *MockSubscriptionManager) Subscribe(postID string) (<-chan *model.Commen
 	return ch, cancel
 }
 
-// Publish публикует комментарий для поста
 func (m *MockSubscriptionManager) Publish(postID string, comment *model.Comment) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Отправляем уведомление всем подписчикам
 	for _, sub := range m.subs[postID] {
 		select {
 		case sub <- comment:
-		default:
-			// если канал переполнен — пропускаем (чтобы не блокировалось)
+		case <-time.After(500 * time.Millisecond):
 		}
 	}
 
