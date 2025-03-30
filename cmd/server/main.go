@@ -81,18 +81,20 @@ func main() {
 	// Страница с тестовым интерфейсом Playground
 	http.Handle("/", playground.Handler("GraphQL Playground", "/query"))
 
-	//// Запуск сервера
-	//log.Println("Запуск сервера на http://localhost:8080/")
-	//log.Fatal(http.ListenAndServe(":8080", nil))
-
 	// HTTP сервер
 	server := &http.Server{
 		Addr: ":8080",
 	}
 
+	// для запуска через докер
+	port := os.Getenv("APP_PORT")
+	if port == "" {
+		port = "8080" // Значение по умолчанию
+	}
+
 	// запуск HTTP сервер
 	go func() {
-		log.Println("Сервер запущен на http://localhost:8080/")
+		log.Printf("Сервер запущен на http://localhost:%s/", port)
 		// строка не возвращается (блокирует поток) пока не выполнится server.Shutdown() или не произойдет фатальная ошибка
 		// Поэтому запускаем goroutine
 		err := server.ListenAndServe()
