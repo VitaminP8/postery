@@ -18,7 +18,12 @@ func (r *mutationResolver) CreatePost(ctx context.Context, title string, content
 
 // CreateComment is the resolver for the createComment field.
 func (r *mutationResolver) CreateComment(ctx context.Context, postID string, parentID *string, content string) (*model.Comment, error) {
-	return r.CommentStore.CreateComment(ctx, postID, *parentID, content)
+	var parentIDValue string
+	if parentID != nil {
+		parentIDValue = *parentID
+	}
+	return r.CommentStore.CreateComment(ctx, postID, parentIDValue, content)
+	//return r.CommentStore.CreateComment(ctx, postID, *parentID, content)
 }
 
 // RegisterUser is the resolver for the registerUser field.

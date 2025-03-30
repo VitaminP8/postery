@@ -12,11 +12,16 @@ import (
 
 var DB *gorm.DB
 
-// InitDB подключается к базе данных PostgreSQL
-func InitDB() {
+// GetDB возвращает глобальную переменную DB (для тестирования)
+func GetDB() *gorm.DB {
+	return DB
+}
+
+// InitDB подключается к базе данных PostgreSQL и устанавливает глобальную переменную DB
+func InitDB() error {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("Error loading .env file")
 	}
 
 	dsn := fmt.Sprintf(
@@ -28,18 +33,33 @@ func InitDB() {
 		config.GetEnv("DB_PORT"),
 		config.GetEnv("DB_SSLMODE"),
 	)
-	DB, err = gorm.Open("postgres", dsn)
+
+	db, err := gorm.Open("postgres", dsn)
 	if err != nil {
-		log.Fatalf("failed to connect to the database: %v", err)
+		return fmt.Errorf("failed to connect to the database: %v", err)
 	}
-	fmt.Println("Successfully connected to the database.")
+
+	DB = db
+	log.Println("Successfully connected to the database.")
+	return nil
 }
 
 // CloseDB закрывает соединение с базой данных
-func CloseDB() {
+func CloseDB() error {
+	if DB == nil {
+		return nil
+	}
+
 	err := DB.Close()
 	if err != nil {
-		log.Fatalf("failed to close the database connection: %v", err)
+		return fmt.Errorf("failed to close the database connection: %v", err)
 	}
-	fmt.Println("Database connection closed.")
+
+	log.Println("Database connection closed.")
+	return nil
+}
+
+// InitDBWithConnection для тестирования (позволяет инъекцию соединения БД)
+func InitDBWithConnection(db *gorm.DB) {
+	DB = db
 }

@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"sync"
+	"time"
 
 	"github.com/VitaminP8/postery/graph/model"
 )
@@ -50,8 +51,8 @@ func (m *SubscriptionManager) Publish(postID string, comment *model.Comment) {
 	for _, sub := range m.subs[postID] {
 		select {
 		case sub <- comment:
-		default:
-			// если канал переполнен — пропускаем (чтобы не блокировалось)
+		case <-time.After(500 * time.Millisecond):
+			// Если канал заполнен, ждем короткое время
 		}
 	}
 }

@@ -55,7 +55,7 @@ func (s *UserPostgresStorage) LoginUser(username, password string) (string, erro
 	var user models.User
 	err := DB.Where("username = ?", username).First(&user).Error
 	if err != nil {
-		return "", fmt.Errorf("user with username %s already exists", username)
+		return "", fmt.Errorf("user with username %s not found", username)
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))

@@ -60,7 +60,15 @@ func (s *CommentPostgresStorage) CreateComment(ctx context.Context, postID, pare
 		if err != nil {
 			return nil, fmt.Errorf("invalid parent ID: %w", err)
 		}
+
 		parentUint := uint(parentInt)
+
+		var parentComment models.Comment
+		err = DB.First(&parentComment, parentUint).Error
+		if err != nil {
+			return nil, fmt.Errorf("invalid parent ID: parent comment not found")
+		}
+
 		comment.ParentID = &parentUint
 
 		DB.Model(&models.Comment{}).Where("id = ?", parentUint).Update("has_replies", true)
@@ -155,6 +163,12 @@ func (s *CommentPostgresStorage) GetReplies(parentID string, limit, offset int) 
 	parentUint, err := strconv.Atoi(parentID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid parent ID: %w", err)
+	}
+
+	var parentComment models.Comment
+	err = DB.First(&parentComment, parentUint).Error
+	if err != nil {
+		return nil, fmt.Errorf("invalid parent ID: parent comment not found")
 	}
 
 	var replies []models.Comment

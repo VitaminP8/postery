@@ -41,10 +41,18 @@ run-memory:
 	go run $(CMD_DIR) --storage=memory
 
 # Тесты
-.PHONY: test
+.PHONY: test test-race test-clear
 test:
-	@echo "Запуск тестов..."
+	@echo "Подробный запуск тестов..."
 	go test -v ./...
+
+test-race:
+	@echo "Подробный запуск тестов с проверкой на гонки данных..."
+	go test -v -race ./...
+
+test-clear:
+	@echo "Запуск тестов..."
+	go test ./...
 
 .PHONY: help
 help:
@@ -57,4 +65,8 @@ help:
 	@echo "  make docker-stop    			 - Остановить Docker контейнеры"
 	@echo "  make run-postgres   			 - Запустить локально с PostgreSQL"
 	@echo "  make run-memory     			 - Запустить локально с in-memory хранилищем"
-	@echo "  make test          			 - Запустить тесты"
+	@echo "  make test-clear          		 - Запустить тесты c без флагов"
+	@echo "  make test         			     - Запустить тесты c флагом -v"
+	@echo "  make test-race         		 - Запустить тесты c флагами -v -race"
+
+

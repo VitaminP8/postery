@@ -122,8 +122,11 @@ func (s *CommentMemoryStorage) GetComments(postID string, limit, offset int) (*m
 		}
 	}
 
-	// сортировка корневых комментариев по createdAt
+	// Сортируем по CreatedAt (по возрастанию) (и по ID в случае одинаково времени создания)
 	sort.Slice(roots, func(i, j int) bool {
+		if roots[i].CreatedAt == roots[j].CreatedAt {
+			return roots[i].ID < roots[j].ID // Дополнительная сортировка по ID
+		}
 		return roots[i].CreatedAt < roots[j].CreatedAt
 	})
 
@@ -163,8 +166,11 @@ func (s *CommentMemoryStorage) GetReplies(parentID string, limit, offset int) (*
 
 	children := parent.Children
 
-	// Сортируем по CreatedAt (по возрастанию)
+	// Сортируем по CreatedAt (по возрастанию) (и по ID в случае одинаково времени создания)
 	sort.Slice(children, func(i, j int) bool {
+		if children[i].CreatedAt == children[j].CreatedAt {
+			return children[i].ID < children[j].ID // Дополнительная сортировка по ID
+		}
 		return children[i].CreatedAt < children[j].CreatedAt
 	})
 

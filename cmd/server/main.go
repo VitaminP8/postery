@@ -40,8 +40,12 @@ func main() {
 
 	switch *storageType {
 	case "postgres":
-		postgres.InitDB()
-		err := postgres.DB.AutoMigrate(&models.User{}, &models.Post{}, &models.Comment{}).Error
+		err := postgres.InitDB()
+		if err != nil {
+			log.Fatalf("failed to connect to the database: %v", err)
+		}
+
+		err = postgres.DB.AutoMigrate(&models.User{}, &models.Post{}, &models.Comment{}).Error
 		if err != nil {
 			log.Fatalf("failed to migrate database: %v", err)
 		}
@@ -111,7 +115,10 @@ func main() {
 	log.Println("Завершение...")
 
 	if *storageType == "postgres" {
-		postgres.CloseDB()
+		err := postgres.CloseDB()
+		if err != nil {
+			log.Printf("Ошибка при закрытии соединения с БД: %v", err)
+		}
 	}
 
 	if err := server.Shutdown(context.Background()); err != nil {
