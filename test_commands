@@ -1,0 +1,131 @@
+mutation createUser {
+  registerUser(username: "admin", email: "admin@example.com", password: "admin"){
+    id
+    username
+    email
+  }
+}
+
+mutation logginUser {
+  loginUser(username: "admin", password: "admin")
+}
+
+mutation post1{
+  createPost(title: "Мой первый пост", content: "Контент поста") {
+    id
+    title
+    content
+    commentsDisabled
+    authorID
+  }
+}
+
+subscription subscribeForPost1{
+  commentAdded(postID: "1") {
+    id
+    postID
+    parentID
+    content
+    authorID
+    createdAt
+    hasReplies
+  }
+}
+
+mutation rootCommentForPost1{
+  createComment(postID: "1", parentID: "", content: "Это корневой комментарий") {
+    id
+    content
+    parentID
+    postID
+    hasReplies
+  }
+}
+
+mutation childCommentForPost1{
+  createComment(postID: "1", parentID: "1", content: "Это дочерний коментарий") {
+    id
+    content
+    parentID
+    postID
+    hasReplies
+  }
+}
+
+mutation rootCommentsForPost1{
+  createComment(postID: "1", parentID: "", content: "Это второй корневой комментарий") {
+    id
+    content
+    parentID
+    postID
+    hasReplies
+  }
+}
+
+query readCommetsForPost1{
+  comments(postID: "1", limit: 10, offset: 0) {
+    items {
+      id
+      content
+      hasReplies
+    }
+    hasMore
+    nextOffset
+  }
+}
+
+query readRepliesForComment1{
+  replies(parentID: "1", limit: 10, offset: 0) {
+    items {
+      id
+      content
+      authorID
+      hasReplies
+    }
+    hasMore
+    nextOffset
+  }
+}
+
+
+query postWithNestedComments {
+  post(id: "1") {
+    id
+    title
+    content
+    commentsDisabled
+    authorID
+    comments(limit: 10, offset: 0) {
+      items {
+        id
+        content
+        authorID
+        createdAt
+        hasReplies
+      }
+      hasMore
+      nextOffset
+    }
+  }
+}
+
+mutation disableCommentsForPost1{
+  disableComment(id: "1")
+}
+
+mutation enableCommentsForPost1{
+  enableComment(id: "1")
+}
+
+
+mutation createUser1 {
+  registerUser(username: "user1", email: "user1@example.com", password: "user1"){
+    id
+    username
+    email
+  }
+}
+
+mutation logginUser1 {
+  loginUser(username: "user1", password: "user1")
+}
