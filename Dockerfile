@@ -4,7 +4,6 @@ FROM golang:1.23 AS builder
 # создаем рабочую дирректорию
 WORKDIR /app
 
-
 # Настраиваем прокси для более надежной загрузки зависимостей
 ENV GOPROXY=https://proxy.golang.org,direct
 
