@@ -34,27 +34,33 @@ APP_PORT= (оставьте пустым)
 
 ### Быстрый запуск в Docker
 
-Собрать образы:
+
+
+
+#### Сборка образов
 
 ```bash
 make docker-build
+# или
+docker-compose build
 ```
 
-#### Запуск PostgreSQL-версии:
+#### Запуск PostgreSQL-версии
 
 ```bash
-make docker-postgres
-# или с логами:
 make docker-postgres-logs
+# или
+docker-compose up app
 ```
 
-#### Запуск in-memory версии:
+#### Запуск in-memory версии
 
 ```bash
-make docker-memory
-# или с логами:
 make docker-memory-logs
+# или
+docker-compose up memory
 ```
+
 
 ### Makefile: команды
 
