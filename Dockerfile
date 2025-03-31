@@ -11,6 +11,12 @@ RUN go mod download
 # копируем весь код (включая уже сгенерированные GraphQL файлы)
 COPY . .
 
+# Обновляем go.mod и go.sum, чтобы убедиться, что все зависимости учтены
+RUN go mod tidy
+
+# Явно загружаем все зависимости снова после обновления
+RUN go mod download
+
 # Статическая сборка бинарника
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/server
 
