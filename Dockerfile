@@ -8,11 +8,8 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# копируем весь код
+# копируем весь код (включая уже сгенерированные GraphQL файлы)
 COPY . .
-
-# Генерируем GraphQL код
-RUN go run github.com/99designs/gqlgen generate
 
 # Статическая сборка бинарника
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/server

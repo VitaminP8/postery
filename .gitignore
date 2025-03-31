@@ -24,8 +24,8 @@
 vendor/
 
 # gqlgen generated
-graph/generated/
-graph/model/
+#graph/generated/
+#graph/model/
 
 # Logs
 *.log
